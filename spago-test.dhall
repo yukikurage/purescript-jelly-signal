@@ -2,5 +2,5 @@ let config = ./spago.dhall
 
 in config // {
   sources = config.sources # [ "test/**/*.purs" ],
-  dependencies = config.dependencies # [ "spec", "identity", "refs" ]
+  dependencies = config.dependencies # [ "spec", "identity", "refs", "aff", "console",  "foldable-traversable" ]
 }

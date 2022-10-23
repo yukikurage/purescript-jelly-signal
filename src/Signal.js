@@ -5,73 +5,89 @@ export const newSignal = (f) => () => ({
         const instance = {
             callbacks,
             value: f((value) => () => {
-                callbacks.forEach((callback) => callback(value));
                 instance.value = value;
+                callbacks.forEach((callback) => callback());
             })(),
         };
         return instance;
     },
 });
-export const pureImpl = (value) => ({
-    depends: [],
-    instantiate: () => ({ value, callbacks: new Set() }),
-});
-export const mapImpl = (f) => (signal) => ({
-    depends: [signal],
-    instantiate: ([depInstance]) => {
+export const mapMany = (f) => (signals) => ({
+    depends: signals,
+    instantiate: (depInstances) => {
         const callbacks = new Set();
         const instance = {
             callbacks,
-            value: f(depInstance.value),
+            value: f(depInstances.map((depInstance) => depInstance.value)),
         };
-        depInstance.callbacks.add((value) => {
-            const newValue = f(value);
-            callbacks.forEach((callback) => callback(newValue));
-            instance.value = newValue;
+        depInstances.forEach((depInstance, index) => {
+            depInstance.callbacks.add(() => {
+                const newValue = f(depInstances.map((depInstance) => depInstance.value));
+                instance.value = newValue;
+                callbacks.forEach((callback) => callback());
+            });
         });
         return instance;
     },
 });
-export const applyImpl = (f) => (signal) => ({
-    depends: [f, signal],
-    instantiate: ([fInstance, signalInstance]) => {
+export const map0 = (v) => mapMany(() => v)([]);
+export const map1 = (f) => (signal) => mapMany((deps) => f(deps[0]))([signal]);
+export const map2 = (f) => (signal1) => (signal2) => mapMany((deps) => f(deps[0])(deps[1]))([signal1, signal2]);
+export const map3 = (f) => (signal1) => (signal2) => (signal3) => mapMany((deps) => f(deps[0])(deps[1])(deps[2]))([
+    signal1,
+    signal2,
+    signal3,
+]);
+export const map4 = (f) => (signal1) => (signal2) => (signal3) => (signal4) => mapMany((deps) => f(deps[0])(deps[1])(deps[2])(deps[3]))([
+    signal1,
+    signal2,
+    signal3,
+    signal4,
+]);
+export const map5 = (f) => (signal1) => (signal2) => (signal3) => (signal4) => (signal5) => mapMany((deps) => f(deps[0])(deps[1])(deps[2])(deps[3])(deps[4]))([signal1, signal2, signal3, signal4, signal5]);
+export const mergeManyWith = (f) => (signals) => ({
+    depends: signals,
+    instantiate: (depInstances) => {
         const callbacks = new Set();
         const instance = {
             callbacks,
-            value: fInstance.value(signalInstance.value),
+            value: f(depInstances.map((depInstance) => depInstance.value)),
         };
-        fInstance.callbacks.add((f) => {
-            const newValue = f(signalInstance.value);
-            callbacks.forEach((callback) => callback(newValue));
-            instance.value = newValue;
-        });
-        signalInstance.callbacks.add((value) => {
-            const newValue = fInstance.value(value);
-            callbacks.forEach((callback) => callback(newValue));
-            instance.value = newValue;
+        depInstances.forEach((depInstance) => {
+            depInstance.callbacks.add(() => {
+                const newValue = depInstance.value;
+                instance.value = newValue;
+                callbacks.forEach((callback) => callback());
+            });
         });
         return instance;
     },
 });
-export const mergeWith = (f) => (signal1) => (signal2) => ({
-    depends: [signal1, signal2],
-    instantiate: ([signal1Instance, signal2Instance]) => {
-        const callbacks = new Set();
-        const instance = {
-            callbacks,
-            value: f(signal1Instance.value)(signal2Instance.value),
-        };
-        signal1Instance.callbacks.add((value) => {
-            callbacks.forEach((callback) => callback(value));
-            instance.value = value;
-        });
-        signal2Instance.callbacks.add((value) => {
-            callbacks.forEach((callback) => callback(value));
-            instance.value = value;
-        });
-        return instance;
-    },
-});
+export const mergeManyImpl = (just) => (nothing) => (signals) => {
+    const head = signals[0];
+    if (head === undefined) {
+        return nothing;
+    }
+    return just({
+        depends: signals,
+        instantiate: (depInstances) => {
+            const callbacks = new Set();
+            const instance = {
+                callbacks,
+                value: depInstances[0].value,
+            };
+            depInstances.forEach((depInstance) => {
+                depInstance.callbacks.add(() => {
+                    const newValue = depInstance.value;
+                    instance.value = newValue;
+                    callbacks.forEach((callback) => callback());
+                });
+            });
+            return instance;
+        },
+    });
+};
+export const mergeWith = (f) => (signal1) => (signal2) => mergeManyWith((deps) => f(deps[0])(deps[1]))([signal1, signal2]);
 export const runSignal = (signal) => () => {
     const instances = new Map();
     const typedGet = (signal) => instances.get(signal);
@@ -85,12 +101,21 @@ export const runSignal = (signal) => () => {
     };
     const instance = go(signal);
     instance.value();
-    instance.callbacks.add((value) => value());
-    return typedGet;
+    instance.callbacks.add(() => instance.value());
 };
-export const getImpl = (just) => (nothing) => (typedGet) => (signal) => () => {
-    const instance = typedGet(signal);
-    if (instance === undefined)
-        return nothing;
-    return just(instance.value);
-};
+export const foldp = (f) => (init) => (signal) => ({
+    depends: [signal],
+    instantiate: ([depInstance]) => {
+        const callbacks = new Set();
+        const instance = {
+            callbacks,
+            value: init,
+        };
+        depInstance.callbacks.add(() => {
+            const newValue = f(depInstance.value)(instance.value);
+            instance.value = newValue;
+            callbacks.forEach((callback) => callback());
+        });
+        return instance;
+    },
+});
