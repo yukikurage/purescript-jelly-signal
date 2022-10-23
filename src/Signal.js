@@ -86,4 +86,11 @@ export const runSignal = (signal) => () => {
     const instance = go(signal);
     instance.value();
     instance.callbacks.add((value) => value());
+    return typedGet;
+};
+export const getImpl = (just) => (nothing) => (typedGet) => (signal) => () => {
+    const instance = typedGet(signal);
+    if (instance === undefined)
+        return nothing;
+    return just(instance.value);
 };

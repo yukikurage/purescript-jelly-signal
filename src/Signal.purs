@@ -3,7 +3,6 @@ module Signal where
 import Prelude
 
 import Control.Apply (lift2)
-import Data.Functor (mapFlipped)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 
