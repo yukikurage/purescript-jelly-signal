@@ -12,13 +12,18 @@ to generate this file without the comments in this block.
 -}
 { name = "my-project"
 , dependencies =
-  [ "datetime"
+  [ "control"
+  , "datetime"
   , "effect"
+  , "filterable"
+  , "foldable-traversable"
   , "integers"
   , "js-timers"
   , "maybe"
   , "now"
   , "prelude"
+  , "refs"
+  , "safely"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs" ]
