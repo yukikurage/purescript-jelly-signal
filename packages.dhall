@@ -103,3 +103,16 @@ let upstream =
         sha256:b1db2e4a17260ace8d17858602f8c56f460982d6e404818d7f6cb9f053324bb1
 
 in  upstream
+  with contravariant =
+      { dependencies =
+          [ "const"
+          , "either"
+          , "newtype"
+          , "prelude"
+          , "tuples"
+          ]
+      , repo =
+          "https://github.com/yukikurage/purescript-contravariant"
+      , version =
+          "master"
+      }

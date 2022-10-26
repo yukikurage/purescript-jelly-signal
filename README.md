@@ -1,23 +1,39 @@
-# Static Signal
-
-The `Signal a` in `purescript-signal` can be thought of as a combination of `Event a` and the initial value `a`.
+# Contravariant Pattern
 
 ```
-Signal a = (Event a, a) = ([Time, a], a)
+component = do
+  stateOut /\ stateIn <- state 0
+  let
+    modifier = sampleOf stateOut stateIn
+  pure $ do
+    button [on click (modifier $< (_ + 1))] $ text "Increment"
+    button [on click (modifier $< (_ - 1))] $ text "Decrement"
+    div' do
+      text "Count: "
+      textOut $ show <$> stateOut
 ```
 
-This library is based on the idea of delaying initialization by making `a` an `Effect a`.
+```
+cvoidRight :: forall a b f. Contravariant f => a -> f a -> f b
+cvoidRight x = cmap (const x)
+
+infixl 4 voidRight as >$
+
+cvoidLeft :: forall a b f. Contravariant f => f a -> a -> f b
+cvoidLeft f x = const x >$< f
+
+infixl 4 cvoidLeft as $<
+```
 
 ```
-Signal a = (Event a, Effect a) = ([Time, a], Effect a)
+dividing = fromFunc \a -> [
+    send divided1 $ a / 2
+  , send divided2 $ a * 2
+  ]
 ```
 
-This could make many Signal-related operations pure.
+```
+capp :: a -> f b -> f (a -> b) ?
 
-## As a FRP
-
-This can also be seen as replacing the classic FRP Behaivor with Signal.
-
-At least on the Web, we rarely use "true" continuous values (e.g., y = x^2), but usually only memoize discrete values.
-
-Thus, the replacement of Behavior with Signal adds the benefit of being able to monitor value changes to Behavior.
+capp a f = cmap (_ $ a) f   -- cmap だけでいける
+```
