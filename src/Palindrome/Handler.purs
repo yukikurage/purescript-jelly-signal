@@ -2,15 +2,18 @@ module Palindrome.Contravariant where
 
 import Prelude
 
+import Data.DateTime.Instant (unInstant)
 import Data.Decidable (class Decidable)
 import Data.Decide (class Decide)
 import Data.Divide (class Divide, (>*<))
 import Data.Divisible (class Divisible, conquer)
 import Data.Either (Either(..))
 import Data.Functor.Contravariant (class Contravariant, (>$<))
+import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple(..), fst, snd)
 import Effect (Effect)
-import Effect.Timer (setTimeout)
+import Effect.Now (now)
+import Effect.Timer (setInterval, setTimeout)
 
 newtype Handler a = Handler (a -> Effect Unit)
 
@@ -43,8 +46,8 @@ instance Monoid (Handler a) where
 runner :: Handler (Effect Unit)
 runner = Handler identity
 
-effecter :: forall a. Handler a -> Handler (Effect a)
-effecter (Handler h) = Handler \e -> e >>= h
+eval :: forall a. Handler a -> Handler (Effect a)
+eval (Handler h) = Handler \e -> e >>= h
 
 makeHandler :: forall a. (a -> Effect Unit) -> Handler a
 makeHandler = Handler
@@ -60,3 +63,10 @@ delay n (Handler h) = Handler \a -> void $ setTimeout n (h a)
 
 filter :: forall a. (a -> Boolean) -> Handler a -> Handler a
 filter f (Handler h) = Handler \a -> if f a then h a else pure unit
+
+pulse :: Int -> Handler Number -> Effect Unit
+pulse n (Handler h) = do
+  Milliseconds st <- unInstant <$> now
+  void $ setInterval n do
+    Milliseconds et <- unInstant <$> now
+    h $ et - st
