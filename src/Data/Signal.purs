@@ -20,12 +20,10 @@ import Effect.Ref (new, read, write)
 foreign import data Signal :: Type -> Type
 foreign import data Channel :: Type -> Type
 
--- | ( (a -> Effect Unit) {- Callback -}
--- |   -> Effect a {- Initialization & return initial value -}
--- | )
 foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
 foreign import mutateImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 foreign import sendImpl :: forall a. Channel a -> a -> Effect Unit
+-- | Convert Channel to Signal
 foreign import subscribe :: forall a. Channel a -> Signal a
 foreign import runSignalImpl :: Signal (Effect (Effect Unit)) -> Effect (Effect Unit)
 foreign import pureImpl :: forall a. a -> Signal a

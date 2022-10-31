@@ -1,39 +1,5 @@
-# Contravariant Pattern
+# Simple Signal
 
-```
-component = do
-  stateOut /\ stateIn <- state 0
-  let
-    modifier = sampleOf stateOut stateIn
-  pure $ do
-    button [on click (modifier $< (_ + 1))] $ text "Increment"
-    button [on click (modifier $< (_ - 1))] $ text "Decrement"
-    div' do
-      text "Count: "
-      textOut $ show <$> stateOut
-```
+Simple Signal is a minimalistic signal library
 
-```
-cvoidRight :: forall a b f. Contravariant f => a -> f a -> f b
-cvoidRight x = cmap (const x)
-
-infixl 4 voidRight as >$
-
-cvoidLeft :: forall a b f. Contravariant f => f a -> a -> f b
-cvoidLeft f x = const x >$< f
-
-infixl 4 cvoidLeft as $<
-```
-
-```
-dividing = fromFunc \a -> [
-    send divided1 $ a / 2
-  , send divided2 $ a * 2
-  ]
-```
-
-```
-capp :: a -> f b -> f (a -> b) ?
-
-capp a f = cmap (_ $ a) f   -- cmap だけでいける
-```
+This is not intended to manage the entire application, but only to make it easier to manage the status of a part of the application.
