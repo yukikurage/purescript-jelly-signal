@@ -8,7 +8,7 @@ import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Ref (modify_, new, read)
-import Signal (Signal, newChannel, runSignal, send, subscribe)
+import Signal (Signal, channel, runSignal, send, subscribe)
 import Test.Spec (SpecT, it, sequential)
 import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter (consoleReporter)
@@ -42,8 +42,8 @@ mapTest = it "mapN" do
 
 channelTest :: SpecT Aff Unit Identity Unit
 channelTest = it "channel" do
-  chn1 <- newChannel 0
-  chn2 <- newChannel 0
+  chn1 <- channel 0
+  chn2 <- channel 0
   let
     test = lift3 (\a b c -> a + b + c) (subscribe chn1) (subscribe chn2) (pure 3)
   trace <- liftEffect $ traceSignal test

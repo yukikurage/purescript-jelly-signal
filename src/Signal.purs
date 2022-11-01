@@ -3,7 +3,7 @@ module Signal
   , Signal
   , readSignal
   , mutate
-  , newChannel
+  , channel
   , runSignal
   , send
   , subscribe
@@ -23,8 +23,8 @@ foreign import data Channel :: Type -> Type
 foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
 
 -- | Make new Channel.
-newChannel :: forall m a. MonadEffect m => a -> m (Channel a)
-newChannel = liftEffect <<< newChannelImpl
+channel :: forall m a. MonadEffect m => a -> m (Channel a)
+channel = liftEffect <<< newChannelImpl
 
 foreign import mutateImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 
