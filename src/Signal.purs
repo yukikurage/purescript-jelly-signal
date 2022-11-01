@@ -2,6 +2,7 @@ module Signal
   ( Channel
   , Signal
   , channel
+  , memorize
   , mutate
   , readSignal
   , runSignal
@@ -18,6 +19,7 @@ import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Ref (new, read, write)
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | Channel is a type that represents value input.
 foreign import data Channel :: Type -> Type
@@ -52,6 +54,15 @@ subscribe chn = Signal { run: subscribeChannel chn, get: readChannel chn }
 -- | Run Effective Signal.
 runSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
 runSignal (Signal { run }) = liftEffect $ run identity
+
+memorize :: forall m a. MonadEffect m => Signal (Effect (Tuple a (Effect Unit))) -> m (Tuple (Signal a) (Effect Unit))
+memorize sig = do
+  chn <- channel $ unsafeCoerce unit -- Safe because write a value to channel immediately.
+  cln <- runSignal $ sig <#> \eff -> do
+    Tuple a cleaner <- eff
+    send chn a
+    pure cleaner
+  pure $ Tuple (subscribe chn) cln
 
 -- | Run Signal without initialization.
 watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
