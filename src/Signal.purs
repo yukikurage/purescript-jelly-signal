@@ -1,11 +1,12 @@
 module Signal
   ( Channel
   , Signal
-  , readSignal
-  , mutate
   , channel
+  , mutate
+  , readSignal
   , runSignal
   , send
+  , signal
   , subscribe
   , watchSignal
   ) where
@@ -13,6 +14,7 @@ module Signal
 import Prelude
 
 import Control.Apply (lift2)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Ref (new, read, write)
@@ -62,6 +64,12 @@ watchSignal sig = do
 -- | Read Signal value.
 readSignal :: forall m a. MonadEffect m => Signal a -> m a
 readSignal (Signal { get }) = liftEffect get
+
+-- | Make pair of Signal and Channel.
+signal :: forall m a. MonadEffect m => a -> m (Tuple (Signal a) (Channel a))
+signal a = do
+  chn <- channel a
+  pure $ Tuple (subscribe chn) chn
 
 instance Functor Signal where
   map f (Signal { run, get }) = Signal
