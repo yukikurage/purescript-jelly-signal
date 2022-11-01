@@ -4,11 +4,12 @@ import Prelude
 
 import Control.Apply (lift3)
 import Data.Identity (Identity)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Ref (modify_, new, read)
-import Signal (Signal, channel, runSignal, send, subscribe)
+import Signal (Signal, memoSignal, newChannel, runSignal, subscribe, writeChannel)
 import Test.Spec (SpecT, it, sequential)
 import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter (consoleReporter)
@@ -32,8 +33,8 @@ pureTest = it "pure" do
   res <- liftEffect trace
   res `shouldEqual` [ 1 ]
 
-mapTest :: SpecT Aff Unit Identity Unit
-mapTest = it "mapN" do
+applyTest :: SpecT Aff Unit Identity Unit
+applyTest = it "mapN" do
   let
     test = lift3 (\a b c -> a + b + c) (pure 1) (pure 2) (pure 3)
   trace <- liftEffect $ traceSignal test
@@ -42,17 +43,50 @@ mapTest = it "mapN" do
 
 channelTest :: SpecT Aff Unit Identity Unit
 channelTest = it "channel" do
-  chn1 <- channel 0
-  chn2 <- channel 0
+  chn1 <- newChannel 0
+  chn2 <- newChannel 0
   let
     test = lift3 (\a b c -> a + b + c) (subscribe chn1) (subscribe chn2) (pure 3)
   trace <- liftEffect $ traceSignal test
-  send chn1 1
-  send chn2 2
+  writeChannel chn1 1
+  writeChannel chn2 2
   res <- liftEffect trace
   res `shouldEqual` [ 3, 4, 6 ]
+
+joinTest :: SpecT Aff Unit Identity Unit
+joinTest = it "join" do
+  chn1 <- newChannel 0
+  chn2 <- newChannel 0
+  chn3 <- newChannel 0
+  let
+    test = do
+      a <- subscribe chn1
+      b <- subscribe chn2
+      _ <- subscribe chn3
+      pure $ a + b
+  trace <- liftEffect $ traceSignal test
+  writeChannel chn1 1
+  writeChannel chn2 2
+  writeChannel chn3 3
+  res <- liftEffect trace
+  res `shouldEqual` [ 0, 1, 3, 3 ]
+
+memoTest :: SpecT Aff Unit Identity Unit
+memoTest = it "memo" do
+  chn <- newChannel 0
+  let
+    effective = subscribe chn <#> \a -> pure $ Tuple a mempty
+  Tuple test stop <- memoSignal effective
+  trace <- liftEffect $ traceSignal test
+  writeChannel chn 1
+  liftEffect $ stop
+  writeChannel chn 2
+  res <- liftEffect trace
+  res `shouldEqual` [ 0, 1 ]
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [ consoleReporter ] $ sequential do
   pureTest
-  mapTest
+  applyTest
+  joinTest
+  memoTest

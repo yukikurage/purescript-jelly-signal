@@ -2,7 +2,7 @@ export const newChannelImpl = (initialValue) => () => ({
     subscriptions: new Set(),
     value: initialValue,
 });
-export const modifyChannelImpl = (fn) => (channel) => () => {
+export const modifyChannelImpl = (channel) => (fn) => () => {
     channel.value = fn(channel.value);
     channel.subscriptions.forEach((subscription) => {
         subscription.cleaner();

@@ -16,8 +16,8 @@ export const newChannelImpl =
   });
 
 export const modifyChannelImpl =
-  <T>(fn: (value: T) => T) =>
-  (channel: Channel<T>) =>
+  <T>(channel: Channel<T>) =>
+  (fn: (value: T) => T) =>
   () => {
     channel.value = fn(channel.value);
     channel.subscriptions.forEach((subscription) => {
