@@ -8,14 +8,14 @@ type Subscription<T> = {
   cleaner: () => void;
 };
 
-export const channelImpl =
+export const newChannelImpl =
   <T>(initialValue: T) =>
   (): Channel<T> => ({
     subscriptions: new Set(),
     value: initialValue,
   });
 
-export const mutateImpl =
+export const modifyChannelImpl =
   <T>(fn: (value: T) => T) =>
   (channel: Channel<T>) =>
   () => {

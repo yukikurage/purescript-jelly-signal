@@ -1,13 +1,13 @@
 module Signal
   ( Channel
   , Signal
-  , channel
-  , memorize
-  , mutate
+  , newChannel
+  , memoSignal
+  , modifyChannel
   , readSignal
   , runSignal
-  , send
-  , signal
+  , writeChannel
+  , newState
   , subscribe
   , watchSignal
   ) where
@@ -24,21 +24,21 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | Channel is a type that represents value input.
 foreign import data Channel :: Type -> Type
 
-foreign import channelImpl :: forall a. a -> Effect (Channel a)
+foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
 
 -- | Make new Channel.
-channel :: forall m a. MonadEffect m => a -> m (Channel a)
-channel = liftEffect <<< channelImpl
+newChannel :: forall m a. MonadEffect m => a -> m (Channel a)
+newChannel = liftEffect <<< newChannelImpl
 
-foreign import mutateImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
+foreign import modifyChannelImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 
--- | Mutate Channel value.
-mutate :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
-mutate c f = liftEffect $ mutateImpl c f
+-- | Modify value in Channel.
+modifyChannel :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
+modifyChannel c f = liftEffect $ modifyChannelImpl c f
 
--- | Send value to Channel.
-send :: forall m a. MonadEffect m => Channel a -> a -> m Unit
-send c a = mutate c (const a)
+-- | Write value to Channel.
+writeChannel :: forall m a. MonadEffect m => Channel a -> a -> m Unit
+writeChannel c a = modifyChannel c (const a)
 
 foreign import readChannel :: forall a. Channel a -> Effect a
 
@@ -55,12 +55,13 @@ subscribe chn = Signal { run: subscribeChannel chn, get: readChannel chn }
 runSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
 runSignal (Signal { run }) = liftEffect $ run identity
 
-memorize :: forall m a. MonadEffect m => Signal (Effect (Tuple a (Effect Unit))) -> m (Tuple (Signal a) (Effect Unit))
-memorize sig = do
-  chn <- channel $ unsafeCoerce unit -- Safe because write a value to channel immediately.
+-- | Memorize effective Signal value to another Signal.
+memoSignal :: forall m a. MonadEffect m => Signal (Effect (Tuple a (Effect Unit))) -> m (Tuple (Signal a) (Effect Unit))
+memoSignal sig = do
+  chn <- newChannel $ unsafeCoerce unit -- Safe because write a value to channel immediately.
   cln <- runSignal $ sig <#> \eff -> do
     Tuple a cleaner <- eff
-    send chn a
+    writeChannel chn a
     pure cleaner
   pure $ Tuple (subscribe chn) cln
 
@@ -77,9 +78,9 @@ readSignal :: forall m a. MonadEffect m => Signal a -> m a
 readSignal (Signal { get }) = liftEffect get
 
 -- | Make pair of Signal and Channel.
-signal :: forall m a. MonadEffect m => a -> m (Tuple (Signal a) (Channel a))
-signal a = do
-  chn <- channel a
+newState :: forall m a. MonadEffect m => a -> m (Tuple (Signal a) (Channel a))
+newState a = do
+  chn <- newChannel a
   pure $ Tuple (subscribe chn) chn
 
 instance Functor Signal where
