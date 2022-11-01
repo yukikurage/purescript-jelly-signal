@@ -1,7 +1,7 @@
 module Signal
   ( Channel
   , Signal
-  , getSignal
+  , readSignal
   , mutate
   , newChannel
   , runSignal
@@ -59,9 +59,9 @@ watchSignal sig = do
     init <- read isInit
     if init then write false isInit *> mempty else eff
 
--- | Get Signal value.
-getSignal :: forall m a. MonadEffect m => Signal a -> m a
-getSignal (Signal { get }) = liftEffect get
+-- | Read Signal value.
+readSignal :: forall m a. MonadEffect m => Signal a -> m a
+readSignal (Signal { get }) = liftEffect get
 
 instance Functor Signal where
   map f (Signal { run, get }) = Signal
