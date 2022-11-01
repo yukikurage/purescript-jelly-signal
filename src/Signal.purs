@@ -20,11 +20,11 @@ import Effect.Ref (new, read, write)
 -- | Channel is a type that represents value input.
 foreign import data Channel :: Type -> Type
 
-foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
+foreign import channelImpl :: forall a. a -> Effect (Channel a)
 
 -- | Make new Channel.
 channel :: forall m a. MonadEffect m => a -> m (Channel a)
-channel = liftEffect <<< newChannelImpl
+channel = liftEffect <<< channelImpl
 
 foreign import mutateImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 
@@ -36,7 +36,7 @@ mutate c f = liftEffect $ mutateImpl c f
 send :: forall m a. MonadEffect m => Channel a -> a -> m Unit
 send c a = mutate c (const a)
 
-foreign import getChannel :: forall a. Channel a -> Effect a
+foreign import readChannel :: forall a. Channel a -> Effect a
 
 foreign import subscribeChannel :: forall a. Channel a -> (a -> Effect (Effect Unit)) -> Effect (Effect Unit)
 
@@ -45,7 +45,7 @@ newtype Signal a = Signal { run :: (a -> Effect (Effect Unit)) -> Effect (Effect
 
 -- | Subscribe to Channel and make Signal.
 subscribe :: forall a. Channel a -> Signal a
-subscribe chn = Signal { run: subscribeChannel chn, get: getChannel chn }
+subscribe chn = Signal { run: subscribeChannel chn, get: readChannel chn }
 
 -- | Run Effective Signal.
 runSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)

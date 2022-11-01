@@ -1,4 +1,4 @@
-export const newChannelImpl = (initialValue) => () => ({
+export const channelImpl = (initialValue) => () => ({
     subscriptions: new Set(),
     value: initialValue,
 });
@@ -9,7 +9,7 @@ export const mutateImpl = (fn) => (channel) => () => {
         subscription.cleaner = subscription.callback(channel.value)();
     });
 };
-export const getChannel = (channel) => () => channel.value;
+export const readChannel = (channel) => () => channel.value;
 export const subscribeChannel = (channel) => (callback) => () => {
     const subscription = {
         callback,
