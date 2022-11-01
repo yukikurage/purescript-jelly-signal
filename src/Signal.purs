@@ -1,9 +1,9 @@
-module Data.Signal
+module Signal
   ( Channel
   , Signal
+  , getSignal
   , mutate
   , newChannel
-  , readSignal
   , runSignal
   , send
   , subscribe
@@ -17,63 +17,82 @@ import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Ref (new, read, write)
 
-foreign import data Signal :: Type -> Type
+-- | Channel is a type that represents value input.
 foreign import data Channel :: Type -> Type
 
 foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
+
+-- | Make new Channel.
+newChannel :: forall m a. MonadEffect m => a -> m (Channel a)
+newChannel = liftEffect <<< newChannelImpl
+
 foreign import mutateImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
-foreign import sendImpl :: forall a. Channel a -> a -> Effect Unit
--- | Convert Channel to Signal
-foreign import subscribe :: forall a. Channel a -> Signal a
-foreign import runSignalImpl :: Signal (Effect (Effect Unit)) -> Effect (Effect Unit)
-foreign import pureImpl :: forall a. a -> Signal a
-foreign import mapImpl :: forall a b. (a -> b) -> Signal a -> Signal b
-foreign import applyImpl :: forall a b. Signal (a -> b) -> Signal a -> Signal b
-foreign import readSignalImpl :: forall a. Signal a -> Effect a
+
+-- | Mutate Channel value.
+mutate :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
+mutate c f = liftEffect $ mutateImpl c f
+
+-- | Send value to Channel.
+send :: forall m a. MonadEffect m => Channel a -> a -> m Unit
+send c a = mutate c (const a)
+
+foreign import getChannel :: forall a. Channel a -> Effect a
+
+foreign import subscribeChannel :: forall a. Channel a -> (a -> Effect (Effect Unit)) -> Effect (Effect Unit)
+
+-- | Signal is a type that represents value output.
+newtype Signal a = Signal { run :: (a -> Effect (Effect Unit)) -> Effect (Effect Unit), get :: Effect a }
+
+-- | Subscribe to Channel and make Signal.
+subscribe :: forall a. Channel a -> Signal a
+subscribe chn = Signal { run: subscribeChannel chn, get: getChannel chn }
+
+-- | Run Effective Signal.
+runSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
+runSignal (Signal { run }) = liftEffect $ run identity
+
+-- | Run Signal without initialization.
+watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
+watchSignal sig = do
+  isInit <- liftEffect $ new true
+  runSignal $ sig <#> \eff -> do
+    init <- read isInit
+    if init then write false isInit *> mempty else eff
+
+-- | Get Signal value.
+getSignal :: forall m a. MonadEffect m => Signal a -> m a
+getSignal (Signal { get }) = liftEffect get
 
 instance Functor Signal where
-  map = mapImpl
+  map f (Signal { run, get }) = Signal
+    { run: \cb -> run (cb <<< f)
+    , get: f <$> get
+    }
 
 instance Apply Signal where
-  apply = applyImpl
+  apply (Signal { run: runF, get: getF }) (Signal { run: runA, get: getA }) =
+    Signal
+      { run: \cb -> runF (\f -> runA (cb <<< f))
+      , get: getF <*> getA
+      }
 
 instance Applicative Signal where
-  pure = pureImpl
+  pure a = Signal
+    { run: \cb -> cb a
+    , get: pure a
+    }
+
+instance Bind Signal where
+  bind (Signal { run: runA, get: getA }) f =
+    Signal
+      { run: \cb -> runA (\a -> let Signal { run } = f a in run cb)
+      , get: getA >>= \a -> let Signal { get } = f a in get
+      }
+
+instance Monad Signal
 
 instance Semigroup a => Semigroup (Signal a) where
   append = lift2 append
 
 instance Monoid a => Monoid (Signal a) where
   mempty = pure mempty
-
--- | Create a new channel
-newChannel :: forall m a. MonadEffect m => a -> m (Channel a)
-newChannel a = liftEffect $ newChannelImpl a
-
--- | Mutate a channel with a function
-mutate :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
-mutate c f = liftEffect $ mutateImpl c f
-
--- | Send a value to a channel
-send :: forall m a. MonadEffect m => Channel a -> a -> m Unit
-send c a = liftEffect $ sendImpl c a
-
--- | Run a signal, returning an effect which can be used to unsubscribe.
-runSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
-runSignal sig = liftEffect $ runSignalImpl sig
-
--- | Read Signal Immediately
-readSignal :: forall m a. MonadEffect m => Signal a -> m a
-readSignal sig = liftEffect $ readSignalImpl sig
-
--- | Run Signal without initialize
-watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
-watchSignal signal = do
-  isInit <- liftEffect $ new true
-  runSignal $ signal <#> \effect -> do
-    isInit' <- read isInit
-    if isInit' then do
-      write false isInit
-      mempty
-    else
-      effect

@@ -1,12 +1,11 @@
 type Channel<T> = {
-  subscriptions: Set<() => void>;
+  subscriptions: Set<Subscription<T>>;
   value: T;
 };
 
-type Signal<T> = {
-  subscribe: (callback: () => void) => void;
-  unsubscribe: (callback: () => void) => void;
-  getValue: () => T;
+type Subscription<T> = {
+  callback: (value: T) => () => () => void;
+  cleaner: () => void;
 };
 
 export const newChannelImpl =
@@ -21,69 +20,28 @@ export const mutateImpl =
   (channel: Channel<T>) =>
   () => {
     channel.value = fn(channel.value);
-    channel.subscriptions.forEach((callback) => callback());
+    channel.subscriptions.forEach((subscription) => {
+      subscription.cleaner();
+      subscription.cleaner = subscription.callback(channel.value)();
+    });
   };
 
-export const sendImpl =
-  <T>(value: T) =>
-  (channel: Channel<T>) =>
-  () => {
-    channel.value = value;
-    channel.subscriptions.forEach((callback) => callback());
-  };
-
-export const subscribe = <T>(channel: Channel<T>) => ({
-  subscribe: (callback: () => void) => {
-    channel.subscriptions.add(callback);
-  },
-  unsubscribe: (callback: () => void) => {
-    channel.subscriptions.delete(callback);
-  },
-  getValue: () => channel.value,
-});
-
-export const runSignalImpl = (signal: Signal<() => () => void>) => () => {
-  let cleaner = signal.getValue()();
-  const callback = () => {
-    cleaner();
-    cleaner = signal.getValue()();
-  };
-  signal.subscribe(callback);
-  return () => {
-    signal.unsubscribe(callback);
-    cleaner();
-  };
-};
-
-export const pureImpl = <T>(value: T) => ({
-  subscribe: () => {},
-  unsubscribe: () => {},
-  getValue: () => value,
-});
-
-export const mapImpl =
-  <T, U>(fn: (value: T) => U) =>
-  (signal: Signal<T>) => ({
-    subscribe: (callback: () => void) => signal.subscribe(callback),
-    unsubscribe: (callback: () => void) => signal.unsubscribe(callback),
-    getValue: () => fn(signal.getValue()),
-  });
-
-export const applyImpl =
-  <T, U>(signalFn: Signal<(value: T) => U>) =>
-  (signal: Signal<T>) => ({
-    subscribe: (callback: () => void) => {
-      signal.subscribe(callback);
-      signalFn.subscribe(callback);
-    },
-    unsubscribe: (callback: () => void) => {
-      signal.unsubscribe(callback);
-      signalFn.unsubscribe(callback);
-    },
-    getValue: () => signalFn.getValue()(signal.getValue()),
-  });
-
-export const readSignalImpl =
-  <T>(signal: Signal<T>) =>
+export const getChannel =
+  <T>(channel: Channel<T>) =>
   () =>
-    signal.getValue();
+    channel.value;
+
+export const subscribeChannel =
+  <T>(channel: Channel<T>) =>
+  (callback: (value: T) => () => () => void) =>
+  (): (() => void) => {
+    const subscription = {
+      callback,
+      cleaner: callback(channel.value)(),
+    };
+    channel.subscriptions.add(subscription);
+    return () => {
+      subscription.cleaner();
+      channel.subscriptions.delete(subscription);
+    };
+  };
