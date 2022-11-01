@@ -67,9 +67,9 @@ readSignal :: forall m a. MonadEffect m => Signal a -> m a
 readSignal sig = liftEffect $ readSignalImpl sig
 
 -- | Run Signal without initialize
-watchSignal :: Signal (Effect (Effect Unit)) -> Effect (Effect Unit)
+watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
 watchSignal signal = do
-  isInit <- new true
+  isInit <- liftEffect $ new true
   runSignal $ signal <#> \effect -> do
     isInit' <- read isInit
     if isInit' then do
