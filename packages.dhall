@@ -99,20 +99,12 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221018/packages.dhall
-        sha256:b1db2e4a17260ace8d17858602f8c56f460982d6e404818d7f6cb9f053324bb1
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221103/packages.dhall
+        sha256:26d3b3b4052e533534b9a888052a46b594abdd615cb56e58fde188b110480857
 
 in  upstream
   with contravariant =
-      { dependencies =
-          [ "const"
-          , "either"
-          , "newtype"
-          , "prelude"
-          , "tuples"
-          ]
-      , repo =
-          "https://github.com/yukikurage/purescript-contravariant"
-      , version =
-          "master"
-      }
+    { dependencies = [ "const", "either", "newtype", "prelude", "tuples" ]
+    , repo = "https://github.com/yukikurage/purescript-contravariant"
+    , version = "master"
+    }
