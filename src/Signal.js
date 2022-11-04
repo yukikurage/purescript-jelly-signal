@@ -1,11 +1,8 @@
-export const newChannelEqImpl = (eq) => (value) => () => ({
+export const newChannelImpl = (initialValue) => () => ({
     subscriptions: new Set(),
-    eq,
-    value,
+    value: initialValue,
 });
 export const modifyChannelImpl = (channel) => (fn) => () => {
-    if (channel.eq(fn(channel.value))(channel.value))
-        return;
     channel.value = fn(channel.value);
     channel.subscriptions.forEach((subscription) => {
         subscription.cleaner();
