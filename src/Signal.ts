@@ -1,5 +1,6 @@
 type Channel<T> = {
   subscriptions: Set<Subscription<T>>;
+  eq: (a: T) => (b: T) => boolean;
   value: T;
 };
 
@@ -8,17 +9,20 @@ type Subscription<T> = {
   cleaner: () => void;
 };
 
-export const newChannelImpl =
-  <T>(initialValue: T) =>
+export const newChannelEqImpl =
+  <T>(eq: (a: T) => (b: T) => boolean) =>
+  (value: T) =>
   (): Channel<T> => ({
     subscriptions: new Set(),
-    value: initialValue,
+    eq,
+    value,
   });
 
 export const modifyChannelImpl =
   <T>(channel: Channel<T>) =>
   (fn: (value: T) => T) =>
   () => {
+    if (channel.eq(fn(channel.value))(channel.value)) return;
     channel.value = fn(channel.value);
     channel.subscriptions.forEach((subscription) => {
       subscription.cleaner();

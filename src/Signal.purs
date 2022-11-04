@@ -1,15 +1,18 @@
 module Signal
   ( Channel
   , Signal
-  , newChannel
   , memoSignal
+  , memoSignalEq
   , modifyChannel
+  , newChannel
+  , newChannelEq
+  , newState
+  , newStateEq
   , readSignal
   , runSignal
-  , writeChannel
-  , newState
   , subscribe
   , watchSignal
+  , writeChannel
   ) where
 
 import Prelude
@@ -24,11 +27,15 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | Channel is a type that represents value input.
 foreign import data Channel :: Type -> Type
 
-foreign import newChannelImpl :: forall a. a -> Effect (Channel a)
+foreign import newChannelEqImpl :: forall a. (a -> a -> Boolean) -> a -> Effect (Channel a)
 
 -- | Make new Channel.
 newChannel :: forall m a. MonadEffect m => a -> m (Channel a)
-newChannel = liftEffect <<< newChannelImpl
+newChannel = liftEffect <<< newChannelEqImpl (const $ const false)
+
+-- | Make new Channel with equality check.
+newChannelEq :: forall m a. MonadEffect m => Eq a => a -> m (Channel a)
+newChannelEq = liftEffect <<< newChannelEqImpl eq
 
 foreign import modifyChannelImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 
@@ -65,6 +72,16 @@ memoSignal sig = do
     pure cleaner
   pure $ Tuple (subscribe chn) cln
 
+-- | Memorize effective Signal value to another Signal with equality check.
+memoSignalEq :: forall m a. MonadEffect m => Eq a => Signal (Effect (Tuple a (Effect Unit))) -> m (Tuple (Signal a) (Effect Unit))
+memoSignalEq sig = do
+  chn <- newChannelEq $ unsafeCoerce unit -- Safe because write a value to channel immediately.
+  cln <- runSignal $ sig <#> \eff -> do
+    Tuple a cleaner <- eff
+    writeChannel chn a
+    pure cleaner
+  pure $ Tuple (subscribe chn) cln
+
 -- | Run Signal without initialization.
 watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
 watchSignal sig = do
@@ -81,6 +98,12 @@ readSignal (Signal { get }) = liftEffect get
 newState :: forall m a. MonadEffect m => a -> m (Tuple (Signal a) (Channel a))
 newState a = do
   chn <- newChannel a
+  pure $ Tuple (subscribe chn) chn
+
+-- | Make pair of Signal and Channel with equality check.
+newStateEq :: forall m a. MonadEffect m => Eq a => a -> m (Tuple (Signal a) (Channel a))
+newStateEq a = do
+  chn <- newChannelEq a
   pure $ Tuple (subscribe chn) chn
 
 instance Functor Signal where
