@@ -66,12 +66,12 @@ memoSignal sig = do
   pure $ Tuple (subscribe chn) cln
 
 -- | Run Signal without initialization.
-watchSignal :: forall m. MonadEffect m => Signal (Effect (Effect Unit)) -> m (Effect Unit)
-watchSignal sig = do
+watchSignal :: forall m a. MonadEffect m => Signal a -> (a -> Effect (Effect Unit)) -> m (Effect Unit)
+watchSignal sig handler = do
   isInit <- liftEffect $ new true
-  runSignal $ sig <#> \eff -> do
+  runSignal $ sig <#> \a -> do
     init <- read isInit
-    if init then write false isInit *> mempty else eff
+    if init then write false isInit *> mempty else handler a
 
 -- | Read Signal value.
 readSignal :: forall m a. MonadEffect m => Signal a -> m a
