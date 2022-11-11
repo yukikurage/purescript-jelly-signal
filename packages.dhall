@@ -106,5 +106,5 @@ in  upstream
   with contravariant =
     { dependencies = [ "const", "either", "newtype", "prelude", "tuples" ]
     , repo = "https://github.com/yukikurage/purescript-contravariant"
-    , version = "master"
+    , version = "v0.1.0"
     }
