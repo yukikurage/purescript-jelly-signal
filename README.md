@@ -1,4 +1,4 @@
-# Simple Signal
+# Jelly Signal
 
 Simple Signal is a minimalistic signal library
 
