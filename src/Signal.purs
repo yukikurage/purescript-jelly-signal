@@ -1,4 +1,4 @@
-module Signal
+module Jelly.Signal
   ( Channel
   , Signal
   , newChannel
