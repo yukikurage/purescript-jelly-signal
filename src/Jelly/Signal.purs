@@ -1,15 +1,17 @@
 module Jelly.Signal
   ( Channel
   , Signal
-  , newChannel
+  , ifSignal
   , memoSignal
   , modifyChannel
+  , newChannel
+  , newState
   , readSignal
   , runSignal
-  , writeChannel
-  , newState
   , subscribe
   , watchSignal
+  , whenSignal
+  , writeChannel
   ) where
 
 import Prelude
@@ -82,6 +84,9 @@ newState :: forall m a. MonadEffect m => a -> m (Tuple (Signal a) (Channel a))
 newState a = do
   chn <- newChannel a
   pure $ Tuple (subscribe chn) chn
+
+ifSignal :: forall a. Signal Boolean -> a -> a -> Signal a
+ifSignal sig a b = (if _ then a else b) <$> sig
 
 instance Functor Signal where
   map f (Signal { run, get }) = Signal
