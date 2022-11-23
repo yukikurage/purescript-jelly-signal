@@ -10,7 +10,6 @@ module Jelly.Signal
   , runSignal
   , subscribe
   , watchSignal
-  , whenSignal
   , writeChannel
   ) where
 
