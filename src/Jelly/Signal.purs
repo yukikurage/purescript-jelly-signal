@@ -6,6 +6,7 @@ module Jelly.Signal
   , modifyChannel
   , modifyChannelEq
   , modifyChannelEq_
+  , modifyChannel_
   , newChannel
   , newState
   , readChannel
