@@ -4,13 +4,17 @@ module Jelly.Signal
   , ifSignal
   , memoSignal
   , modifyChannel
+  , modifyChannelEq
+  , modifyChannelEq_
   , newChannel
   , newState
+  , readChannel
   , readSignal
   , runSignal
   , subscribe
   , watchSignal
   , writeChannel
+  , writeChannelEq
   ) where
 
 import Prelude
@@ -33,15 +37,37 @@ newChannel = liftEffect <<< newChannelImpl
 
 foreign import modifyChannelImpl :: forall a. Channel a -> (a -> a) -> Effect Unit
 
--- | Modify value in Channel.
-modifyChannel :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
-modifyChannel c f = liftEffect $ modifyChannelImpl c f
+foreign import readChannel :: forall a. Channel a -> Effect a
+
+-- | Modify value in Channel, and return new value.
+modifyChannel :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m a
+modifyChannel c f = liftEffect do
+  modifyChannelImpl c f
+  readChannel c
+
+-- | Void version of `modifyChannel`.
+modifyChannel_ :: forall m a. MonadEffect m => Channel a -> (a -> a) -> m Unit
+modifyChannel_ c f = liftEffect $ modifyChannelImpl c f
 
 -- | Write value to Channel.
 writeChannel :: forall m a. MonadEffect m => Channel a -> a -> m Unit
-writeChannel c a = modifyChannel c (const a)
+writeChannel c a = modifyChannel_ c (const a)
 
-foreign import readChannel :: forall a. Channel a -> Effect a
+-- | Modify value in Channel, but skip if the values are the same.
+modifyChannelEq :: forall a. Eq a => Channel a -> (a -> a) -> Effect a
+modifyChannelEq c f = do
+  a <- readChannel c
+  let a' = f a
+  if a == a' then pure unit else writeChannel c a'
+  pure a'
+
+-- | Void version of `modifyChannelEq`.
+modifyChannelEq_ :: forall a. Eq a => Channel a -> (a -> a) -> Effect Unit
+modifyChannelEq_ c f = void $ modifyChannelEq c f
+
+-- | Write value to Channel, but skip if the values are the same.
+writeChannelEq :: forall a. Eq a => Channel a -> a -> Effect Unit
+writeChannelEq c a = modifyChannelEq_ c (const a)
 
 foreign import subscribeChannel :: forall a. Channel a -> (a -> Effect (Effect Unit)) -> Effect (Effect Unit)
 
