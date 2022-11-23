@@ -110,6 +110,7 @@ newState a = do
   chn <- newChannel a
   pure $ Tuple (subscribe chn) chn
 
+-- | Use conditional Signal.
 ifSignal :: forall a. Signal Boolean -> a -> a -> Signal a
 ifSignal sig a b = (if _ then a else b) <$> sig
 
