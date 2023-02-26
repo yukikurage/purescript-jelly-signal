@@ -12,7 +12,19 @@ to generate this file without the comments in this block.
 -}
 { name = "my-project"
 , dependencies =
-  [ "effect", "prelude", "refs", "tuples", "unsafe-coerce" ]
+  [ "aff"
+  , "effect"
+  , "js-timers"
+  , "maybe"
+  , "partial"
+  , "prelude"
+  , "refs"
+  , "tailrec"
+  , "transformers"
+  , "tuples"
+  , "unsafe-coerce"
+  , "web-events"
+  ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs" ]
 }
